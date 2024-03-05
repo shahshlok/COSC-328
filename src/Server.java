@@ -1,13 +1,14 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
 
 public class Server {
+    private static final int PORT = 12000;
+    static final String SERVER_DIRECTORY = "server/";
+
     public static void main(String[] args) {
-        int port = 12000;
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("FTP Server Started on Port " + port);
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            System.out.println("FTP Server Started on Port " + PORT);
 
             while (true) {
                 try {
@@ -28,17 +29,18 @@ public class Server {
 
 class ClientHandler extends Thread {
     private Socket socket;
+    private BufferedReader input;
+    private PrintWriter output;
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket) throws IOException {
         this.socket = socket;
+        input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        output = new PrintWriter(socket.getOutputStream(), true);
     }
 
     @Override
     public void run() {
         try {
-            BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter output = new PrintWriter(socket.getOutputStream(), true);
-
             String commandLine;
             while ((commandLine = input.readLine()) != null) {
                 System.out.println("Command: " + commandLine);
@@ -48,14 +50,14 @@ class ClientHandler extends Thread {
                 switch (command) {
                     case "GET":
                         if (tokens.length > 1) {
-                            sendFile(tokens[1], output);
+                            sendFile(tokens[1]);
                         } else {
                             output.println("ERROR: Filename is missing.");
                         }
                         break;
                     case "PUT":
                         if (tokens.length > 1) {
-                            receiveFile(tokens[1], input);
+                            receiveFile(tokens[1]);
                         } else {
                             output.println("ERROR: Filename is missing.");
                         }
@@ -70,27 +72,32 @@ class ClientHandler extends Thread {
                         break;
                 }
             }
-            socket.close();
         } catch (IOException ex) {
             System.out.println("Server exception: " + ex.getMessage());
             ex.printStackTrace();
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    private void sendFile(String fileName, PrintWriter output) {
-        File file = new File("/Users/Shlok/IdeaProjects/COSC 328/server/serverFile" + fileName);
+    private void sendFile(String fileName) {
+        File file = new File(Server.SERVER_DIRECTORY + fileName);
         if (file.exists()) {
             try (InputStream fileInputStream = new FileInputStream(file)) {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
 
                 while ((bytesRead = fileInputStream.read(buffer)) != -1) {
-                    output.write(Arrays.toString(buffer), 0, bytesRead);
+                    socket.getOutputStream().write(buffer, 0, bytesRead);
                 }
 
                 // Send an EOF marker
-                output.write("EOF\n");
-                output.flush();
+                socket.getOutputStream().write("EOF\n".getBytes());
+                socket.getOutputStream().flush();
             } catch (IOException e) {
                 output.println("ERROR: Error reading file.");
             }
@@ -99,18 +106,17 @@ class ClientHandler extends Thread {
         }
     }
 
+    private void receiveFile(String fileName) {
+        File file = new File(Server.SERVER_DIRECTORY + fileName);
+        try (OutputStream fileOutputStream = new FileOutputStream(file)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
 
-
-    private void receiveFile(String fileName, BufferedReader input) throws IOException {
-        File file = new File("/Users/Shlok/IdeaProjects/COSC 328/server/serverFile" + fileName);
-        if (!file.exists()) {
-            file.createNewFile();
+            while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
+                fileOutputStream.write(buffer, 0, bytesRead);
+            }
+        } catch (IOException e) {
+            output.println("ERROR: Error writing file.");
         }
-        PrintWriter fileWriter = new PrintWriter(new FileWriter(file));
-        String line;
-        while (!(line = input.readLine()).equals("EOF")) {
-            fileWriter.println(line);
-        }
-        fileWriter.close();
     }
 }

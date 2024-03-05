@@ -1,10 +1,9 @@
 import java.io.*;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Scanner;
 
 public class Client {
+    private static final String SERVER_ADDRESS = "127.0.0.1";
     private Socket socket;
     private BufferedReader reader;
     private BufferedWriter writer;
@@ -24,17 +23,15 @@ public class Client {
     public void getFile(String fileName) throws IOException {
         sendCommand("GET " + fileName);
         File file = new File("client/" + fileName);
-        try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(file))) {
-            char[] buffer = new char[8192];
-            int charsRead;
+        try (OutputStream fileOutputStream = new FileOutputStream(file)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
 
-            while ((charsRead = reader.read(buffer)) != -1) {
-                fileWriter.write(buffer, 0, charsRead);
+            while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
+                fileOutputStream.write(buffer, 0, bytesRead);
             }
         }
     }
-
-
 
     public void putFile(String fileName) throws IOException {
         File file = new File("client/" + fileName);
@@ -44,16 +41,18 @@ public class Client {
         }
 
         sendCommand("PUT " + fileName);
-        BufferedReader fileReader = new BufferedReader(new FileReader(file));
-        String line;
-        while ((line = fileReader.readLine()) != null) {
-            writer.write(line);
-            writer.newLine();
+        try (InputStream fileInputStream = new FileInputStream(file)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+
+            while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+                socket.getOutputStream().write(buffer, 0, bytesRead);
+            }
+
+            // Send an EOF marker
+            socket.getOutputStream().write("EOF\n".getBytes());
+            socket.getOutputStream().flush();
         }
-        writer.write("EOF");
-        writer.newLine();
-        writer.flush();
-        fileReader.close();
     }
 
     public void quit() throws IOException {
@@ -72,7 +71,7 @@ public class Client {
             System.out.println("Enter port number: ");
             int port = sc.nextInt();
 
-            Client client = new Client("127.0.0.1", port);
+            Client client = new Client(SERVER_ADDRESS, port);
             BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
             String input;
             boolean continueLoop = true;
