@@ -1,12 +1,17 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Scanner;
 
 public class Server {
-    private static final int PORT = 12000;
     static final String SERVER_DIRECTORY = "server/";
+    static int PORT;
 
     public static void main(String[] args) {
+        Scanner sc= new Scanner(System.in);
+        System.out.print("Enter the port number: ");
+        PORT = sc.nextInt();
+
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("FTP Server Started on Port " + PORT);
 
@@ -43,7 +48,7 @@ class ClientHandler extends Thread {
         try {
             String commandLine;
             while ((commandLine = input.readLine()) != null) {
-                System.out.println("Command: " + commandLine);
+                System.out.println("Command Accepted: " + commandLine);
                 String[] tokens = commandLine.split(" ");
                 String command = tokens[0].toUpperCase();
 
@@ -52,23 +57,27 @@ class ClientHandler extends Thread {
                         if (tokens.length > 1) {
                             sendFile(tokens[1]);
                         } else {
-                            output.println("ERROR: Filename is missing.");
+                            System.out.println("ERROR: Filename is missing.");
                         }
                         break;
                     case "PUT":
                         if (tokens.length > 1) {
                             receiveFile(tokens[1]);
                         } else {
-                            output.println("ERROR: Filename is missing.");
+                            System.out.println("ERROR: Filename is missing.");
                         }
                         break;
+                    case "CLOSE":
+                        System.out.println("Connection closed by client");
+                        socket.close();
+                        return;
                     case "QUIT":
                         output.println("QUIT");
                         System.out.println("Connection closed.");
                         socket.close();
                         return;
                     default:
-                        output.println("ERROR: Unknown command.");
+                        System.out.println("ERROR: Unknown command.");
                         break;
                 }
             }
@@ -88,7 +97,7 @@ class ClientHandler extends Thread {
         File file = new File(Server.SERVER_DIRECTORY + fileName);
         if (file.exists()) {
             try (InputStream fileInputStream = new FileInputStream(file)) {
-                byte[] buffer = new byte[8192];
+                byte[] buffer = new byte[8192]; // We created a buffer of 8 kb
                 int bytesRead;
 
                 while ((bytesRead = fileInputStream.read(buffer)) != -1) {
@@ -99,10 +108,10 @@ class ClientHandler extends Thread {
                 socket.getOutputStream().write("EOF\n".getBytes());
                 socket.getOutputStream().flush();
             } catch (IOException e) {
-                output.println("ERROR: Error reading file.");
+                System.out.println("ERROR: Error reading file.");
             }
         } else {
-            output.println("ERROR: File not found.");
+            System.out.println("ERROR: File not found.");
         }
     }
 
@@ -115,8 +124,11 @@ class ClientHandler extends Thread {
             while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
                 fileOutputStream.write(buffer, 0, bytesRead);
             }
+
+            fileOutputStream.flush();
+            System.out.println("File Received");
         } catch (IOException e) {
-            output.println("ERROR: Error writing file.");
+            System.out.println("ERROR: Error writing file.");
         }
     }
 }

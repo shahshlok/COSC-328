@@ -54,6 +54,11 @@ public class Client {
             socket.getOutputStream().flush();
         }
     }
+    public void closeConnection() throws IOException{
+        sendCommand("CLOSE");
+        socket.close();
+        System.out.println("Connection closed successfully.");
+    }
 
     public void quit() throws IOException {
         sendCommand("QUIT");
@@ -68,7 +73,7 @@ public class Client {
     public static void main(String[] args) {
         try {
             Scanner sc = new Scanner(System.in);
-            System.out.println("Enter port number: ");
+            System.out.print("Enter port number: ");
             int port = sc.nextInt();
 
             Client client = new Client(SERVER_ADDRESS, port);
@@ -90,6 +95,10 @@ public class Client {
                         break;
                     case "PUT":
                         client.putFile(fileName);
+                        break;
+                    case "CLOSE":
+                        client.closeConnection();
+                        continueLoop= false;
                         break;
                     case "QUIT":
                         client.quit();
