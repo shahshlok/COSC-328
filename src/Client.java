@@ -70,7 +70,6 @@ public class Client {
             Scanner sc = new Scanner(System.in);
             System.out.println("Enter port number: ");
             int port = sc.nextInt();
-            sc.close();
 
             Client client = new Client(SERVER_ADDRESS, port);
             BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
@@ -101,7 +100,7 @@ public class Client {
                         break;
                 }
             }
-
+            sc.close();
             client.close();
         } catch (IOException e) {
             e.printStackTrace();
