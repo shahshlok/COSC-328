@@ -113,6 +113,10 @@ class ClientHandler extends Thread {
             int bytesRead;
 
             while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
+                String str = new String(buffer, 0, bytesRead);
+                if (str.contains("EOF")) {
+                    break; // Stop when EOF is found
+                }
                 fileOutputStream.write(buffer, 0, bytesRead);
             }
         } catch (IOException e) {
