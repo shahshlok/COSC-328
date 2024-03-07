@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 
 public class Server {
     private static final int PORT = 12000;
@@ -62,9 +63,16 @@ class ClientHandler extends Thread {
                             output.println("ERROR: Filename is missing.");
                         }
                         break;
+
+                    case "CLOSE":
+                        output.println("CLOSE");
+                        System.out.println("Connection close command received from client.");
+                        socket.close();
+                        break;
+
                     case "QUIT":
                         output.println("QUIT");
-                        System.out.println("Connection closed.");
+                        System.out.println("Process closed.");
                         socket.close();
                         return;
                     default:
@@ -72,6 +80,8 @@ class ClientHandler extends Thread {
                         break;
                 }
             }
+        } catch (SocketException se) {
+            System.out.println("Connection has been closed by client.");
         } catch (IOException ex) {
             System.out.println("Server exception: " + ex.getMessage());
             ex.printStackTrace();
